@@ -8,15 +8,20 @@ Created on Tue Jun 27 21:49:33 2017
 ### Types ###
 
 # Literal: a,b,c,...
+# Inverted Literal: A=!a, B=!b, ...
 class lit(int):
     def __new__(cls, v):
         if isinstance(v, int):
-            if v < 26: # 0..25
+            if (0 <= v and v < 26) or (100 <= v and v < 126): # 0..25 (a-z) and 100..125 (!a-!z)
                 return int.__new__(cls, v)
             else:
-                raise ValueError("Only 26 literals are supported for compact printing.")
+                raise ValueError("Only literals 0..25 (a-z) and 100..125(!a-!z) are supported for compact printing.")
         elif isinstance(v, str):
+            o = ord(v)
+            if ord('a') <= o and o <= ord('z'):
             return int.__new__(cls, ord(v)-ord('a'))
+            elif ord('A') <= o and o <= ord('Z'):
+                return int.__new__(cls, 100+ord(v)-ord('A'))
         else:
             raise TypeError("Literals must be either integers or characters.")
     # TODO overload other set operators: https://docs.python.org/2/library/stdtypes.html#set
@@ -165,9 +170,9 @@ def main(argv):
     test()
     
     # process data
+    # NOTE inverted literals are written with capital letteres
     result = level0kernels(func('adf+aef+bdf+bef+cdf+cef+g')) # slide 29
-    # TODO allow inverted literals !a etc.
-    #result = level0kernels(func('abe!g+abfg+abg!e+ace!g+acfg+acg!e+de!g+dfg+dg!e+bh+bi+ch+ci')) # slide 31
+    #result = level0kernels(func('abeG+abfg+abgE+aceG+acfg+acgE+deG+dfg+dgE+bh+bi+ch+ci')) # slide 31
     for r in result:
         print(r)
 
