@@ -19,7 +19,7 @@ class lit(int):
         elif isinstance(v, str):
             o = ord(v)
             if ord('a') <= o and o <= ord('z'):
-            return int.__new__(cls, ord(v)-ord('a'))
+                return int.__new__(cls, ord(v)-ord('a'))
             elif ord('A') <= o and o <= ord('Z'):
                 return int.__new__(cls, 100+ord(v)-ord('A'))
         else:
@@ -33,6 +33,7 @@ class lit(int):
         else:
             raise TypeError("Can only make union of literal and cube.")
     def __mul__(self, l): # logic and # lit('a')*lit('b')=cube('ab')
+        # TODO check other type lit,cube,func
         return cube([self, l])
     def __str__(self):
         return chr(ord('a')+self)
@@ -57,7 +58,7 @@ class cube(frozenset): # set of literals
         return cube(frozenset.__sub__(self,c))
     def __str__(self):
         res = [str(f) for f in list(self)]
-        res.sort()
+        res.sort() # TODO sort a,A,b,B,...
         return "".join(res);
 # Function: abc+de
 class func(frozenset): # set of cubes
@@ -125,6 +126,7 @@ class func(frozenset): # set of cubes
         for c in self:
             f = f | (c | cc)
         return f
+    # TODO support division by functions -> polynomial division func('ab+ac')/func('b+c')=lit('a')
     # TODO handle case func('c')/cube('c') -> need lit('1')?
     #      -> currently cube([]) is interpreted as '1'
     def __truediv__(self, cc): # algebraic "/" without rest: q=f/g <=> f=q*g+r
@@ -149,6 +151,7 @@ class func(frozenset): # set of cubes
         res = [str(f) if len(f)>0 else '1' for f in list(self)]
         res.sort()
         return "+".join(res)
+
 
 ### Tests ###
         
@@ -201,34 +204,61 @@ def _level0kernels(f,ls,j): # function, sorted literals, literal number
         if len([1 for c in f if li in c]) > 1:
             #print('li:', li)
             f2 = f / li
-            #print('f2:',f2)
-            # largest cube dividing f2 without rest 
+            #print('f2:', f2)
+            # largest cube dividing f2 without rest
             # => cube consisting of all literals which occur in all cubes of f2
             # -> number of occurences equal to number of cubes in f2
             c = cube([e[0] for e in count(f2).most_common() if e[1] == len(f2)])
-                #print('c:',c)
+            #print('c:', c)
             if not any([ls[k] in c for k in range(i)]):
                 k |= _level0kernels(f/(li|c), ls, i+1)
     if len(k) < 1:
         k.add(f)
-    #print('return:',k)
+    #print('return:', k)
     return k
-     
+
 def level0kernels(f):
     return _level0kernels(f, cs(f), 0)
-    
+
 ### Main ###
         
 def main(argv):
     # run tests
     test()
-    
-    # process data
+
+    # find level 0 kernels
     # NOTE inverted literals are written with capital letteres
-    result = level0kernels(func('adf+aef+bdf+bef+cdf+cef+g')) # slide 29
-    #result = level0kernels(func('abeG+abfg+abgE+aceG+acfg+acgE+deG+dfg+dgE+bh+bi+ch+ci')) # slide 31
-    for r in result:
-        print(r)
+    #fs = ['adf+aef+bdf+bef+cdf+cef+g'] # slide 29
+    #fs = ['abeG+abfg+abgE+aceG+acfg+acgE+deG+dfg+dgE+bh+bi+ch+ci'] # slide 31
+    #fs = [ # slide 32
+    #    'aefhi+befhi+cefhi+defhi+k',
+    #    'aeghi+beghi+deghi+m'
+    #]
+    fs = [ # exercise 4.3
+        'afgh+bfgh+cfgh+dfgh+efgh+ik',
+        'afhl+cfhl+dfhl+k+m'
+    ]
+    # print result
+    functions = list(map((lambda f: level0kernels(func(f))), fs))
+    print('Kernels:')
+    for i, kernels in enumerate(functions):
+        print('- f'+str(i)+': {'+', '.join([str(kernel) for kernel in kernels])+'}')
+
+    # find common kernel
+    # TODO reduce with initializer/default -> need set with all possible literals for AND operation!
+    ck = reduce(func.__and__, [f.pop() for f in functions])
+    # print result
+    # TODO how to intersect when multiple kernels per function?
+    print('Common kernel: {'+str(ck)+'}') # intersect first kernel of all function
+
+    # calculate cost
+    nf = 0 # number of realisations of kernel ck in all functions
+    # TODO move to helper functions / class members
+    for f in fs:        # function
+        nf += 1 # TODO how to calculate correctly!? -> exercise teacher wants to post this in forum at some point...
+    l = len(ck) # number of literals in ck
+    c = (nf-1)*(l-1) - 1 # saved literals for replacement
+    print('Cost:', c)
 
 if __name__ == "__main__":
     from sys import argv
