@@ -61,6 +61,7 @@ class cube(frozenset): # set of literals
         return "".join(res);
 # Function: abc+de
 class func(frozenset): # set of cubes
+    # constructor
     def __new__(cls, s): # TODO use *argv to allow calling without arguments for empty set
         if isinstance(s, str):
             return frozenset.__new__(cls, [cube(c) for c in s.split('+')])
@@ -68,6 +69,8 @@ class func(frozenset): # set of cubes
             return frozenset.__new__(cls, [s])
         else:
             return frozenset.__new__(cls, s)
+
+    # custom functions
     def num_lit(self): # number of literals -> highest used literal
         res = 0;
         for c in self:
@@ -75,23 +78,60 @@ class func(frozenset): # set of cubes
                 if l > res:
                     res = l
         return res+1 # indices start at 0
-    # TODO overload other set operators: https://docs.python.org/2/library/stdtypes.html#set
+
+    # set operators
     def __or__(self, f): # set union
+        if isinstance(f, lit):
+            f = cube([f])
         if isinstance(f, cube):
             f = func([f])
+        if not isinstance(f, func):
+            raise TypeError("Set operations only possible for same type [here: func] (implicit upcasts supported: lit->cube->func).")
         return func(frozenset.__or__(self,f))
-    # parameters func/cube
-    def __mul__(self, cc): # algebraic/logic multiplication
+    def __and__(self, f): # set intersection
+        if isinstance(f, lit):
+            f = cube([f])
+        if isinstance(f, cube):
+            f = func([f])
+        if not isinstance(f, func):
+            raise TypeError("Set operations only possible for same type [here: func] (implicit upcasts supported: lit->cube->func).")
+        return func(frozenset.__and__(self,f))
+    def __sub__(self, f): # set difference
+        if isinstance(f, lit):
+            f = cube([f])
+        if isinstance(f, cube):
+            f = func([f])
+        if not isinstance(f, func):
+            raise TypeError("Set operations only possible for same type [here: func] (implicit upcasts supported: lit->cube->func).")
+        return func(frozenset.__sub__(self,f))
+    def __xor__(self, f): # set symmetric difference (elements only in one but not in both)
+        if isinstance(f, lit):
+            f = cube([f])
+        if isinstance(f, cube):
+            f = func([f])
+        if not isinstance(f, func):
+            raise TypeError("Set operations only possible for same type [here: func] (implicit upcasts supported: lit->cube->func).")
+        return func(frozenset.__xor__(self,f))
+
+    # algebraic functions on logic expressions
+    def __add__(self, f): # algebraic "+" = logic "OR"
+        return self.__or__(f) # same as set union
+    def __mul__(self, cc): # algebraic "*" = logic "AND"
+        if isinstance(cc, lit):
+            cc = cube([cc])
+        if not isinstance(cc, cube):
+            raise TypeError("Functions can only be multiplied by cubes or literals.")
         f = func([])
         for c in self:
             f = f | (c | cc)
         return f
-    # parameters func/cube
     # TODO handle case func('c')/cube('c') -> need lit('1')?
     #      -> currently cube([]) is interpreted as '1'
-    def __truediv__(self, cc): # algebraic/logic division
+    def __truediv__(self, cc): # algebraic "/" without rest: q=f/g <=> f=q*g+r
         if isinstance(cc, lit):
             cc = cube([cc])
+        if not isinstance(cc, cube):
+            raise TypeError("Functions can only be multiplied by cubes or literals.")
         f = func([])
         for c in self:
             if cc <= c: # without rest
@@ -103,6 +143,8 @@ class func(frozenset): # set of cubes
             if not (cc <= c): # rest
                 f = f | c
         return f
+
+    # representation
     def __str__(self):
         res = [str(f) if len(f)>0 else '1' for f in list(self)]
         res.sort()
