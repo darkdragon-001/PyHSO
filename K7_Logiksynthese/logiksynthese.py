@@ -179,31 +179,43 @@ import itertools
 def powerset(items):
     return [x for length in range(len(items)+1) for x in itertools.combinations(items, length)]
 
+# sort literals based on number of occurences
+from collections import Counter
+from functools import reduce
+# count number of occurences for all literals
+def count(f): # count
+    return reduce((lambda x, y : x + Counter(y)), f, Counter()) # use Counter to merge cube-sets
+# sort literals based on number of occurences
+def cs(f): # count, sort
+    return [e[0] for e in count(f).most_common()] # sort counts desc (most_common), get literals without counts
+
 
 ### Algorithm ###
 
-def level0kernels(f,j=0):
-    #print('call:',f,',',j)
+def _level0kernels(f,ls,j): # function, sorted literals, literal number
+    #print('call:', f, ';', ls, ';', j)
     k = set()
-    for i in range(j,f.num_lit()):
-        if len([1 for c in f if lit(i) in c]) > 1: # literal lit(i) contained in more than one cubes of f
-            #print('li:',lit(i))
-            f2 = f / lit(i)
+    for i in range(len(ls)):
+        li = ls[i]
+        # literal ls[i] contained in more than one cubes of f
+        if len([1 for c in f if li in c]) > 1:
+            #print('li:', li)
+            f2 = f / li
             #print('f2:',f2)
-            # TODO only choose literals/subcubes available in f2!
-            candidates = powerset([lit(x) for x in range(f.num_lit())])[::-1] # all possible cubes ordered by size descending
-            cs = [cube(c) for c in candidates if f2%cube(c)==func([])] # all cubes dividing f2 without rest
-            #print('cs:',cs)
-            if len(cs) > 1: # last element is always empty set
-                c = cs[0]
+            # largest cube dividing f2 without rest 
+            # => cube consisting of all literals which occur in all cubes of f2
+            # -> number of occurences equal to number of cubes in f2
+            c = cube([e[0] for e in count(f2).most_common() if e[1] == len(f2)])
                 #print('c:',c)
-                if not any([lit(k) in c for k in range(i)]):
-                    k |= level0kernels(f/(lit(i)|c), i+1)
+            if not any([ls[k] in c for k in range(i)]):
+                k |= _level0kernels(f/(li|c), ls, i+1)
     if len(k) < 1:
         k.add(f)
     #print('return:',k)
     return k
      
+def level0kernels(f):
+    return _level0kernels(f, cs(f), 0)
     
 ### Main ###
         
